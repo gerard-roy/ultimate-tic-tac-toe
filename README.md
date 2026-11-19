@@ -1,10 +1,10 @@
-# Ninefold
+# 3D Tic-Tac-Toe
 
-Ultimate Tic-Tac-Toe as a stained-glass window, with classic nine-square tic-tac-toe as a second game. Everything is drawn and synthesized in code: there are no image, video or audio files.
+Tic-tac-toe on three stacked 3 by 3 levels, drawn as a stained-glass window, with classic nine-square tic-tac-toe as a second game. A line of three wins: along a level, straight down through the levels, or slanting across them. Everything is drawn and synthesized in code: there are no image, video or audio files.
 
 - Play against three computer opponents (Apprentice, Glazier, Master) or with two players on one device.
 - Pick a background: Space or Ocean, each in a lively and a calm version, or the plain stone room. The scenery answers the pointer. Reach a star and its constellation draws itself. Rest on a star or an animal to read about it. It never affects the game.
-- The full spec is in [docs/SPEC.md](docs/SPEC.md). Choices made where the spec was open, and where later requests override it, are in [docs/DECISIONS.md](docs/DECISIONS.md).
+- [docs/SPEC.md](docs/SPEC.md) is the original brief, written for an earlier game called Ninefold. Its game rules no longer apply; its look, sound and accessibility sections still do. What changed, and why, is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Run
 
@@ -20,10 +20,9 @@ Useful query parameters: `?seed=7` makes the computer repeatable, `?bg=ocean-cal
 ## Test
 
 ```sh
-npm test                               # rules, search and classic unit tests (Vitest)
+npm test                               # rules and opponent unit tests (Vitest)
 npx playwright install chromium        # once
 npm run e2e                            # full games, phone view, keyboard, scenery, screenshots (Playwright)
-npm run balance                        # opponent win rates; takes about 6 minutes, not part of CI
 ```
 
 `npm run e2e` builds the site, serves it on port 4173 and writes screenshots to `e2e/screenshots/`.
@@ -44,9 +43,10 @@ Constellation star data in `src/bg/constellations.ts` is generated from the [HYG
 ## Layout
 
 ```
-src/rules.ts            Ninefold rules engine, no browser code
+src/cube.ts             3D rules and opponents, no browser code
 src/classic.ts          nine-square rules and opponent
-src/ai/                 Monte Carlo tree search, opponents, Web Worker
+src/rules.ts            types shared by both games
+src/ai/                 opponent names, Web Worker
 src/game.ts             controller: turns, undo, save, resume
 src/render/             the SVG window, glass, light, motion
 src/bg/                 interactive backgrounds: space and ocean
@@ -54,5 +54,5 @@ src/audio.ts            synthesized sound
 src/ui/                 title, status line, how to play, menu
 tests/                  unit tests
 e2e/                    Playwright games and screenshots
-scripts/balance.ts      opponent win rates
+scripts/                generator for the constellation data
 ```

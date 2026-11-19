@@ -14,7 +14,9 @@ export interface Settings {
   mode: Mode;
 }
 
-const KEY = 'ninefold.settings';
+export const BRAND = '3D Tic-Tac-Toe';
+
+const KEY = 'ttt3d.settings';
 
 export const DEFAULTS: Settings = {
   master: 0.8,
@@ -24,12 +26,14 @@ export const DEFAULTS: Settings = {
   reduceMotion: null,
   confirmTaps: false,
   background: 'space-lively',
-  variant: 'ninefold',
+  variant: 'cube',
   mode: 'glazier',
 };
 
 export function loadSettings(): Settings {
-  return { ...DEFAULTS, ...(readJson<Partial<Settings>>(KEY) ?? {}) };
+  const s = { ...DEFAULTS, ...(readJson<Partial<Settings>>(KEY) ?? {}) };
+  if (s.variant !== 'classic') s.variant = 'cube';
+  return s;
 }
 
 /** Settings save at once. */

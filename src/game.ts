@@ -1,11 +1,12 @@
 /** Game controller: turns, undo, save, resume, and the computer opponent. */
-import * as nine from './rules';
 import { other, type GameState, type Move, type Player } from './rules';
-import { classicLegal, classicMoves, classicPlay, classicUndo, newClassic } from './classic';
+import { classicLegal, classicMoves, classicPlay, classicUndo, classicWin, newClassic } from './classic';
+import { cubeLegal, cubeMoves, cubePlay, cubeUndo, cubeWin, newCube } from './cube';
 import type { OpponentId } from './ai/opponents';
 import type { WorkerRequest } from './ai/worker';
 
-export type Variant = 'ninefold' | 'classic';
+/** 'cube' is 3D tic-tac-toe on three levels; 'classic' is one board of nine squares. */
+export type Variant = 'cube' | 'classic';
 export type Mode = OpponentId | 'two';
 
 export interface Rules {
@@ -14,11 +15,13 @@ export interface Rules {
   isLegal(s: GameState, m: Move): boolean;
   play(s: GameState, m: Move): GameState;
   undo(s: GameState): GameState;
+  /** The winning line as indexes into `panes`, or null. */
+  line(s: GameState): readonly number[] | null;
 }
 
 export const RULES: Record<Variant, Rules> = {
-  ninefold: { newGame: nine.newGame, legalMoves: nine.legalMoves, isLegal: nine.isLegal, play: nine.play, undo: nine.undo },
-  classic: { newGame: newClassic, legalMoves: classicMoves, isLegal: classicLegal, play: classicPlay, undo: classicUndo },
+  cube: { newGame: newCube, legalMoves: cubeMoves, isLegal: cubeLegal, play: cubePlay, undo: cubeUndo, line: cubeWin },
+  classic: { newGame: newClassic, legalMoves: classicMoves, isLegal: classicLegal, play: classicPlay, undo: classicUndo, line: classicWin },
 };
 
 export interface Save {
@@ -31,9 +34,8 @@ export interface Save {
 export type Tally = { win: number; loss: number; draw: number };
 export type Stats = Record<string, Tally>;
 
-const SAVE_KEY = 'ninefold.save';
-const STATS_KEY = 'ninefold.stats';
-const COACH_KEY = 'ninefold.coached';
+const SAVE_KEY = 'ttt3d.save';
+const STATS_KEY = 'ttt3d.stats';
 
 export function readJson<T>(key: string): T | null {
   try {
@@ -63,9 +65,9 @@ export interface ChangeEvent {
 export const MIN_COMPUTER_MS = 700;
 
 export class Game {
-  variant: Variant = 'ninefold';
+  variant: Variant = 'cube';
   mode: Mode = 'glazier';
-  state: GameState = nine.newGame('amber');
+  state: GameState = newCube('amber');
   thinking = false;
   /** Timestamp of the last computer move appearing, for tests. */
   lastComputerDelay = 0;
@@ -76,11 +78,9 @@ export class Game {
   private requestId = 0;
   private timer = 0;
   private seed: number | undefined;
-  private phone = false;
 
-  constructor(opts: { seed?: number; phone?: boolean } = {}) {
+  constructor(opts: { seed?: number } = {}) {
     this.seed = opts.seed;
-    this.phone = opts.phone ?? false;
   }
 
   get rules(): Rules {
@@ -122,7 +122,7 @@ export class Game {
     const save = readJson<Save>(SAVE_KEY);
     if (!save || !Array.isArray(save.history)) return false;
     try {
-      this.variant = save.variant === 'classic' ? 'classic' : 'ninefold';
+      this.variant = save.variant === 'classic' ? 'classic' : 'cube';
       this.mode = save.mode;
       let s = this.rules.newGame(save.first);
       for (const m of save.history) s = this.rules.play(s, m);
@@ -191,7 +191,7 @@ export class Game {
   private record(): void {
     if (!this.vsComputer) return;
     const stats = Game.stats();
-    const key = this.variant === 'classic' ? `classic-${this.mode}` : this.mode;
+    const key = `${this.variant}-${this.mode}`;
     const t = stats[key] ?? { win: 0, loss: 0, draw: 0 };
     if (this.state.result === 'draw') t.draw++;
     else if (this.state.result === this.human) t.win++;
@@ -202,14 +202,6 @@ export class Game {
 
   static stats(): Stats {
     return readJson<Stats>(STATS_KEY) ?? {};
-  }
-
-  /** Coaching runs for the first three turns of the first game on this device. */
-  static coachingTurnsLeft(): number {
-    return Math.max(0, 3 - (readJson<number>(COACH_KEY) ?? 0));
-  }
-  static coachingUsed(): void {
-    writeJson(COACH_KEY, (readJson<number>(COACH_KEY) ?? 0) + 1);
   }
 
   private cancelThinking(): void {
@@ -236,20 +228,25 @@ export class Game {
     const worker = this.worker;
     worker.onmessage = (e: MessageEvent<{ id: number; move: Move }>) => {
       if (e.data.id !== id) return;
-      const wait = Math.max(0, MIN_COMPUTER_MS - (performance.now() - started));
-      this.timer = window.setTimeout(() => {
+      const show = () => {
         if (id !== this.requestId) return;
+        // Timers can fire a little early, so check the clock before showing the move.
+        const left = MIN_COMPUTER_MS - (performance.now() - started);
+        if (left > 0) {
+          this.timer = window.setTimeout(show, left);
+          return;
+        }
         this.thinking = false;
         this.lastComputerDelay = performance.now() - started;
         this.onThinking(false);
         this.apply(e.data.move);
-      }, wait);
+      };
+      show();
     };
     const req: WorkerRequest = {
       id,
       opponent: this.mode as OpponentId,
       state: this.state,
-      phone: this.phone,
       classic: this.variant === 'classic',
       seed: this.seed === undefined ? undefined : this.seed + this.state.history.length,
     };

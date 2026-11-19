@@ -23,6 +23,15 @@ html {
     --win: min(92vw, 56vh);
   }
 }
+/* The 3D window is about one and two thirds as tall as it is wide. */
+html[data-variant='cube'] {
+  --win: min(46vh, 500px);
+}
+@media (max-width: 599.98px) {
+  html[data-variant='cube'] {
+    --win: min(92vw, 43vh);
+  }
+}
 
 body {
   margin: 0;
@@ -194,10 +203,6 @@ button.play {
   position: relative;
   z-index: 1;
 }
-.glide {
-  transform-origin: 0 0;
-  transition: transform 450ms cubic-bezier(0.3, 0, 0.2, 1);
-}
 .window {
   display: block;
   width: 100%;
@@ -217,9 +222,10 @@ button.play {
   height: calc(var(--arch-h) * 0.7);
   display: grid;
   place-items: center;
-  font-size: clamp(44px, 9vw, 96px);
+  font-size: calc(var(--win) * 0.1);
   line-height: 1;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   pointer-events: none;
   display: none;
 }
@@ -227,13 +233,12 @@ button.play {
   display: grid;
 }
 .flat .arch-name {
-  font-size: 30px;
+  font-size: calc(var(--win) * 0.085);
   top: 0;
   height: var(--arch-h);
 }
 @media (max-width: 599.98px) {
   .arch-name {
-    font-size: 44px;
     top: calc(var(--arch-h) * 0.36);
   }
 }
@@ -373,43 +378,6 @@ button.play {
   display: none;
 }
 
-/* Map (phones) */
-.map {
-  display: none;
-  position: absolute;
-  z-index: 3;
-  top: 4px;
-  right: calc((100vw - var(--win)) / -2 + 8px);
-  width: 64px;
-  height: 64px;
-  min-height: 0;
-  padding: 5px;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--stone);
-}
-.map span {
-  background: var(--clear-unlit);
-}
-.map span.lit {
-  background: var(--clear-lit);
-}
-.map span.amber {
-  background: var(--amber-lit);
-}
-.map span.cobalt {
-  background: var(--cobalt-lit);
-}
-.map span.drawn {
-  background: var(--grisaille-unlit);
-}
-.map span.preview {
-  outline: 2px solid var(--sun);
-  outline-offset: -1px;
-  position: relative;
-  z-index: 1;
-}
-
 /* Result */
 .result {
   position: fixed;
@@ -486,19 +454,27 @@ input[type='range'] {
   place-items: center;
   padding: 6px 0;
 }
-.demo {
+.demo-stack {
   display: grid;
-  grid-template-columns: repeat(3, 46px);
+  gap: 8px;
+}
+.demo {
+  --cell: 46px;
+  display: grid;
+  grid-template-columns: repeat(3, var(--cell));
   gap: 3px;
   padding: 6px;
   background: var(--lead);
 }
-.demo-wide {
-  gap: 7px;
+/* Three levels, tilted like the board. */
+.demo-levels .demo {
+  --cell: 34px;
+  transform: skewX(-17deg) scaleY(0.6);
+  margin: -22px 0;
 }
 .demo-cell {
-  width: 46px;
-  height: 46px;
+  width: var(--cell);
+  height: var(--cell);
   background-color: var(--clear-unlit);
 }
 .demo-cell.lit {
@@ -511,12 +487,6 @@ input[type='range'] {
 }
 .demo-cell.cobalt {
   background: radial-gradient(circle, var(--cobalt-deep) 0 24%, var(--cobalt-lit) 25% 50%, var(--clear-lit) 51%);
-}
-.demo-wide .demo-cell.amber {
-  background: var(--amber-lit);
-}
-.demo-wide .demo-cell.cobalt {
-  background: var(--cobalt-lit);
 }
 .demo-cell.arrives {
   animation: arrive 3600ms ease-in-out infinite;
@@ -594,6 +564,16 @@ input[type='range'] {
 }
 .lead-line {
   stroke: var(--lead);
+}
+.post {
+  stroke: var(--stone-edge);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.tray {
+  fill: var(--lead);
+  stroke: var(--lead-shine);
+  stroke-width: 2;
 }
 .arch-detail {
   transition: opacity 300ms ease;
@@ -676,30 +656,12 @@ input[type='range'] {
   fill: var(--sun);
   opacity: 0;
 }
-.panel-outline {
-  fill: none;
-  stroke: var(--sun);
-  stroke-width: 5;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-.panel-outline.show {
-  opacity: 1;
-}
 .ghost {
   opacity: 0;
   transition: opacity 120ms ease;
 }
 .ghost.show {
   opacity: 0.35;
-}
-.spark {
-  fill: none;
-  stroke: var(--sun);
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0;
 }
 .win-bar {
   fill: none;
@@ -775,9 +737,8 @@ input[type='range'] {
   [data-screen='game'] .turn-chip {
     display: block;
   }
-  [data-screen='game'][data-variant='ninefold'] .map {
-    display: grid;
-    right: 8px;
+  .brand {
+    font-size: 21px;
   }
   .top nav .icon-btn:first-child {
     display: grid;
@@ -789,10 +750,7 @@ input[type='range'] {
   }
 }
 
-/* Reduce motion: no glide, spark, bloom or motes. States cross-fade. */
-.reduce-motion .glide {
-  transition: none;
-}
+/* Reduce motion: no motes or moving light. States cross-fade. */
 .reduce-motion .sweep,
 .reduce-motion .breathing .turn-light,
 .reduce-motion .demo-cell.arrives {

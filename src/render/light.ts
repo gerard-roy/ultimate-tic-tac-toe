@@ -1,5 +1,5 @@
 /** Lit states, the floor light and the dust motes. */
-import type { GameState, PanelState } from '../rules';
+import type { GameState } from '../rules';
 import { flatColour } from './glass';
 
 export interface PanelLight {
@@ -8,24 +8,12 @@ export interface PanelLight {
   grisaille: boolean;
 }
 
-/**
- * Panels where the next player may move are lit. Won panels sit 70% of the way
- * to lit so the score always reads. Drawn panels stay unlit. A won game lights
- * the whole window.
- */
-export function panelLights(state: GameState, opts: { title: boolean; classic: boolean }): PanelLight[] {
-  return state.panels.map((p: PanelState, i) => {
-    if (opts.title) return { level: 0, grisaille: false };
-    if (opts.classic) {
-      if (state.result === 'draw') return { level: 0.35, grisaille: true };
-      return { level: 1, grisaille: false };
-    }
-    if (p === 'drawn') return { level: 0, grisaille: true };
-    if (state.result === 'amber' || state.result === 'cobalt') return { level: 1, grisaille: false };
-    if (p === 'amber' || p === 'cobalt') return { level: 0.7, grisaille: false };
-    if (state.result === 'draw') return { level: 0, grisaille: false };
-    const legal = state.target === null || state.target === i;
-    return { level: legal ? 1 : 0, grisaille: false };
+/** Every level is lit during play, a drawn board turns grisaille, and the title shows the window unlit. */
+export function panelLights(state: GameState, title: boolean): PanelLight[] {
+  return state.panels.map(() => {
+    if (title) return { level: 0, grisaille: false };
+    if (state.result === 'draw') return { level: 0.35, grisaille: true };
+    return { level: 1, grisaille: false };
   });
 }
 
@@ -47,24 +35,22 @@ export class FloorLight {
   draw(state: GameState, lights: PanelLight[]): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    const side = state.panels.length === 1 ? 1 : 3;
-    const cells = side * 3;
-    const cell = 108 / cells;
+    // Levels fall on the floor one under the other, as they stand in the window.
+    const levels = state.panels.length;
+    const cellW = 108 / 3;
+    const cellH = 108 / (3 * levels);
     const ox = 27;
     const oy = 27;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    for (let panel = 0; panel < state.panels.length; panel++) {
-      const light = lights[panel];
-      const px = (panel % side) * 3;
-      const py = Math.floor(panel / side) * 3;
-      const owner = state.panels[panel];
+    for (let level = 0; level < levels; level++) {
+      const light = lights[level];
       for (let pane = 0; pane < 9; pane++) {
-        const mark = owner === 'amber' || owner === 'cobalt' ? owner : state.panes[panel * 9 + pane];
+        const mark = state.panes[level * 9 + pane];
         const role = mark === 'amber' ? 'amber-arm' : mark === 'cobalt' ? 'cobalt-ring' : 'clear';
         // Unlit glass casts almost nothing on the floor.
         ctx.globalAlpha = 0.12 + 0.88 * light.level;
         ctx.fillStyle = flatColour(role, light.level, light.grisaille);
-        ctx.fillRect(ox + (px + (pane % 3)) * cell + 0.5, oy + (py + Math.floor(pane / 3)) * cell + 0.5, cell - 1, cell - 1);
+        ctx.fillRect(ox + (pane % 3) * cellW + 0.5, oy + (level * 3 + Math.floor(pane / 3)) * cellH + 0.5, cellW - 1, cellH - 1);
       }
     }
     ctx.globalAlpha = 1;

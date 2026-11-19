@@ -3,10 +3,7 @@
 export const PANE = 100;
 export const THIN = 5;
 export const PANEL = PANE * 3 + THIN * 2; // 310
-export const BAR = 14;
 export const FRAME = 30;
-export const WIN = FRAME * 2 + PANEL * 3 + BAR * 2; // 1018
-export const ARCH = 240;
 export const PIECE_LEAD = 3;
 
 export type Role =
@@ -14,9 +11,7 @@ export type Role =
   | 'amber-arm'
   | 'amber-centre'
   | 'cobalt-ring'
-  | 'cobalt-centre'
-  | 'amber-band'
-  | 'cobalt-band';
+  | 'cobalt-centre';
 
 const TOKENS = {
   clearLit: '#D9EADF',
@@ -91,12 +86,10 @@ export function colourFor(role: Role, lit: boolean, grisaille: boolean): string 
     case 'amber-arm':
       return lit ? TOKENS.amberLit : TOKENS.amberUnlit;
     case 'amber-centre':
-    case 'amber-band':
       return lit ? TOKENS.amberDeep : mixHex(TOKENS.amberUnlit, TOKENS.lead, 0.3);
     case 'cobalt-ring':
       return lit ? TOKENS.cobaltLit : TOKENS.cobaltUnlit;
     case 'cobalt-centre':
-    case 'cobalt-band':
       return lit ? TOKENS.cobaltDeep : mixHex(TOKENS.cobaltUnlit, TOKENS.lead, 0.3);
   }
 }
@@ -190,17 +183,6 @@ export function roundelPieces(size: number, x0 = 0, y0 = 0): Piece[] {
 
 export function emptyPieces(size: number, x0 = 0, y0 = 0): Piece[] {
   return [{ role: 'clear', d: poly([[x0, y0], [x0 + size, y0], [x0 + size, y0 + size], [x0, y0 + size]]) }];
-}
-
-/** A won panel: one large emblem inside a band 12 wide in the deep colour. */
-export function emblemPieces(player: 'amber' | 'cobalt'): Piece[] {
-  const band = 12;
-  const inner = PANEL - band * 2;
-  const outer = poly([[0, 0], [PANEL, 0], [PANEL, PANEL], [0, PANEL]]);
-  const hole = poly([[band, band], [PANEL - band, band], [PANEL - band, PANEL - band], [band, PANEL - band]]);
-  const bandPiece: Piece = { role: player === 'amber' ? 'amber-band' : 'cobalt-band', d: outer + hole, rule: 'evenodd' };
-  const inside = player === 'amber' ? crossPieces(inner, band, band) : roundelPieces(inner, band, band);
-  return [bandPiece, ...inside];
 }
 
 let noiseUrl: string | null = null;

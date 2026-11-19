@@ -10,8 +10,8 @@ export interface TitleChoice {
 }
 
 const GAMES: { id: Variant; name: string; line: string }[] = [
-  { id: 'ninefold', name: 'Ninefold', line: 'Nine panels of nine panes.' },
-  { id: 'classic', name: 'Classic', line: 'Tic-tac-toe on nine squares.' },
+  { id: 'cube', name: '3D', line: 'Three levels of nine squares.' },
+  { id: 'classic', name: 'Classic', line: 'One board of nine squares.' },
 ];
 
 const MODES: { id: Mode; name: string; line: string }[] = [
@@ -62,7 +62,7 @@ export function buildTitle(opts: {
       tally.textContent = '';
       return;
     }
-    const t = Game.stats()[variant === 'classic' ? `classic-${mode}` : mode];
+    const t = Game.stats()[`${variant}-${mode}`];
     tally.textContent = t ? `Against ${OPPONENTS[mode].name}: ${t.win} won, ${t.loss} lost, ${t.draw} drawn.` : '';
   };
 

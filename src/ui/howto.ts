@@ -1,32 +1,35 @@
-/** How to play: four rules, each with a small animated panel. */
+/** How to play: four rules, each with a small animated board. */
 import { h } from './dom';
 
 interface Step {
   title: string;
   text: string;
-  /** Cells of a 3 by 3 demo: a amber, c cobalt, l lit, . unlit; upper case marks arrive in turn. */
-  demo: string;
-  wide?: boolean;
+  /** One string of nine squares a level: a amber, c cobalt, l empty; upper case marks arrive in turn. */
+  demo: string[];
 }
 
 const STEPS: Step[] = [
-  { title: 'Take turns', text: 'Amber plays crosses and Cobalt plays roundels. Place one mark in an empty pane of a lit panel.', demo: 'lAl lCl lAl'.replace(/ /g, '') },
-  { title: 'Your pane sends them', text: 'The pane you choose decides where your opponent plays next. Play the top-right pane and they must play in the top-right panel.', demo: '..L ... ...'.replace(/ /g, ''), wide: true },
-  { title: 'Win a panel', text: 'Three of your marks in a line wins that panel and closes it. If you are sent to a closed panel, you may play in any lit panel.', demo: 'AcA cAc Acl'.replace(/ /g, '') },
-  { title: 'Win the window', text: 'Three won panels in a line wins the game. If every panel closes with no line, it is a draw.', demo: 'A.c .Ac c.A'.replace(/ /g, ''), wide: true },
+  { title: 'Take turns', text: 'Amber plays crosses and Cobalt plays roundels. Place one mark in any empty square, on any of the three levels.', demo: ['lllllllll', 'llllAllll', 'lllllClll'] },
+  { title: 'Three in a line wins', text: 'A row, a column or a diagonal on one level wins the game at once.', demo: ['AlclAcllA'] },
+  { title: 'Lines run through the levels', text: 'A line can also go straight down through all three levels, or slant across them from one level to the next.', demo: ['Allllllll', 'llllAllll', 'llllllllA'] },
+  { title: 'Classic', text: 'Classic is the same game on a single board of nine squares. If every square fills with no line, it is a draw.', demo: ['acaacccaA'] },
 ];
 
 function demo(step: Step): HTMLElement {
-  const grid = h('div', { class: `demo${step.wide ? ' demo-wide' : ''}`, 'aria-hidden': 'true' });
+  const stack = h('div', { class: `demo-stack${step.demo.length > 1 ? ' demo-levels' : ''}`, 'aria-hidden': 'true' });
   let order = 0;
-  for (const ch of step.demo) {
-    const lower = ch.toLowerCase();
-    const cls = lower === 'a' ? 'amber' : lower === 'c' ? 'cobalt' : lower === 'l' ? 'lit' : 'unlit';
-    const cell = h('span', { class: `demo-cell ${cls}${ch !== lower ? ' arrives' : ''}` });
-    if (ch !== lower) cell.style.setProperty('--i', String(order++));
-    grid.append(cell);
+  for (const level of step.demo) {
+    const grid = h('div', { class: 'demo' });
+    for (const ch of level) {
+      const lower = ch.toLowerCase();
+      const cls = lower === 'a' ? 'amber' : lower === 'c' ? 'cobalt' : 'lit';
+      const cell = h('span', { class: `demo-cell ${cls}${ch !== lower ? ' arrives' : ''}` });
+      if (ch !== lower) cell.style.setProperty('--i', String(order++));
+      grid.append(cell);
+    }
+    stack.append(grid);
   }
-  return grid;
+  return stack;
 }
 
 export function buildHowTo(): HTMLDialogElement {
@@ -58,9 +61,6 @@ export function buildHowTo(): HTMLDialogElement {
       index++;
       show();
     }
-  });
-  dialog.addEventListener('close', () => {
-    index = 0;
   });
   const open = dialog.showModal.bind(dialog);
   dialog.showModal = () => {

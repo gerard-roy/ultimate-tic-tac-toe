@@ -69,3 +69,16 @@ Choices made where the spec was open, and places where a later request from the 
 45. Stars that are only in the HYG catalogue have no size on their card, because that catalogue has no radius. The 40 hand-written stars keep full cards.
 46. Inside a constellation, a star is named only when the pointer is right on it, so the figure stays readable. Catalogue stars outside the figures are scattered between them.
 47. The info card tries to leave the star's whole constellation uncovered.
+
+## 3D tic-tac-toe replaces Ninefold
+
+48. **The game.** The owner asked for 3D tic-tac-toe on three stacked 3 by 3 levels in place of Ninefold. The Ninefold rules, its search engine, the balance script, the send spark, won-panel emblems, coaching, phone zoom and the map are removed. Entries 4 to 14, 21 to 23 and 27 to 30 above describe that earlier game and no longer apply.
+49. The name is "3D Tic-Tac-Toe". The spec's sections on rules, opponents and phone zoom are superseded; its look, sound and accessibility sections still guide the build.
+50. Rules: 27 squares, any empty square may be played, and the first line of three wins. There are 49 lines: 8 on each level, 9 straight down, and 16 slanting through the levels. A full board with no line would be a draw, but that cannot happen on this board.
+51. The first player has a large advantage, above all by taking the very centre. No rule limits that; the first mover alternates on every rematch.
+52. Opponents: Apprentice takes a win and otherwise plays at random. Glazier also blocks, looks two moves ahead, and plays at random one time in four. Master blocks and looks up to six moves ahead within half a second.
+53. `GameState` is shared with Classic: `panel` is the level (0 at the top) and `pane` the square on it.
+54. The three levels are drawn tilted, one above the other, on four posts inside the stone window. Rows are squashed to 60% and lean 30%, which keeps every square at least 44px wide and tall on a 390 by 844 phone.
+55. The 3D window is narrower and taller than the Classic one: `min(46vh, 500px)` wide, or `min(92vw, 43vh)` on a phone.
+56. Arrow keys walk a grid three squares wide: the rows of the top level, then the middle, then the bottom.
+57. Wins, losses and draws are kept separately for 3D and Classic. Saved settings and games from the Ninefold build are not carried over.

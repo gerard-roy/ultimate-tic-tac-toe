@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classicChoose, classicMoves, classicPlay, classicUndo, newClassic } from '../src/classic';
-import { mulberry32 } from '../src/ai/mcts';
+import { mulberry32 } from '../src/ai/rng';
 
 const run = (panes: number[]) => panes.reduce((s, p) => classicPlay(s, { panel: 0, pane: p }), newClassic());
 

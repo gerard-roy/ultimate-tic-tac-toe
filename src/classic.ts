@@ -42,6 +42,8 @@ export function classicLine(panes: readonly (Player | null)[]): readonly [number
   return null;
 }
 
+export const classicWin = (state: GameState) => classicLine(state.panes);
+
 export function classicPlay(state: GameState, move: Move): GameState {
   if (!classicLegal(state, move)) throw new Error(`Illegal move: pane ${move.pane}`);
   const panes = state.panes.slice();
