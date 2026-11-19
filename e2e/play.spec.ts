@@ -98,6 +98,8 @@ test('two players, undo, rematch and resume after reload', async ({ page }) => {
   const s = await playToEnd(page);
   await expect(page.locator('#result-title')).toBeVisible({ timeout: 6000 });
   await page.getByRole('button', { name: 'Rematch' }).click();
+  // The last game's result is not left for a screen reader to find.
+  await expect(page.locator('[aria-live]')).toHaveText('');
   const next = await state(page);
   expect(next.history).toHaveLength(0);
   // The first mover alternates on every rematch.

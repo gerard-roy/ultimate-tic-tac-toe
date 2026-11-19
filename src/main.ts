@@ -142,6 +142,9 @@ game.onChange = (e) => {
     live.textContent = announce(game, e.prev, e.move);
   } else if (e.kind === 'undo') {
     live.textContent = 'Move taken back.';
+  } else {
+    // A new or resumed game must not keep the last game's result.
+    live.textContent = '';
   }
   draw(e);
   if (e.kind !== 'move' || (!game.computerToMove && s.result === 'playing' && game.vsComputer)) view.focusLegal();
@@ -169,6 +172,7 @@ function showTitle(): void {
   screen = 'title';
   window.clearTimeout(resultTimer);
   result.hidden = true;
+  live.textContent = '';
   game.variant = settings.variant;
   game.state = game.rules.newGame('amber');
   buildView();
