@@ -4,7 +4,6 @@ export const PANE = 100;
 export const THIN = 5;
 export const PANEL = PANE * 3 + THIN * 2; // 310
 export const FRAME = 30;
-export const PIECE_LEAD = 3;
 
 export type Role =
   | 'clear'
