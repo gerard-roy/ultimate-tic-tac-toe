@@ -44,6 +44,8 @@ export interface Scene {
   resize(w: number, h: number, avoid: DOMRect | null): void;
   /** Draws one frame and returns what the pointer is resting on, if anything. */
   frame(ctx: CanvasRenderingContext2D, t: number, dt: number, pointer: Pointer): Focus | null;
+  /** Points the pointer can rest on to open a card. Used by the tests. */
+  targets(): { id: string; x: number; y: number }[];
 }
 
 const DWELL_MS = 420;
@@ -103,6 +105,10 @@ export class Background {
       if (document.hidden) this.pause();
       else this.play();
     });
+  }
+
+  targets(): { id: string; x: number; y: number }[] {
+    return this.scene?.targets() ?? [];
   }
 
   get current(): BackgroundId {
@@ -218,14 +224,24 @@ export class Background {
     requestAnimationFrame(() => card.classList.add('show'));
   }
 
+  /** Beside the pointer, on whichever side keeps the card on screen and off the game. */
   private place(x: number, y: number): void {
     const card = this.cardEl;
     const cw = card.offsetWidth;
     const ch = card.offsetHeight;
-    let left = x + 22;
-    if (left + cw > this.w - 8) left = x - 22 - cw;
-    left = Math.max(8, Math.min(this.w - cw - 8, left));
-    const top = Math.max(8, Math.min(this.h - ch - 8, y - ch / 2));
+    const gap = 26;
+    const clampX = (v: number) => Math.max(8, Math.min(this.w - cw - 8, v));
+    const clampY = (v: number) => Math.max(8, Math.min(this.h - ch - 8, v));
+    const spots: [number, number][] = [
+      [x + gap, clampY(y - ch / 2)],
+      [x - gap - cw, clampY(y - ch / 2)],
+      [clampX(x - cw / 2), y + gap],
+      [clampX(x - cw / 2), y - gap - ch],
+    ];
+    const hole = this.avoid();
+    const fits = ([l, t]: [number, number]) => l >= 8 && t >= 8 && l + cw <= this.w - 8 && t + ch <= this.h - 8;
+    const clear = ([l, t]: [number, number]) => !hole || l + cw < hole.left || l > hole.right || t + ch < hole.top || t > hole.bottom;
+    const [left, top] = spots.find((s) => fits(s) && clear(s)) ?? spots.find(fits) ?? [clampX(x + gap), clampY(y + gap)];
     card.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
   }
 

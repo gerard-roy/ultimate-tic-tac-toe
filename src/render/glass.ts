@@ -177,7 +177,7 @@ export function roundelPieces(size: number, x0 = 0, y0 = 0): Piece[] {
     const sideMid: [number, number] = [cx, c];
     const arcStart: [number, number] = [c + (qx ? ro : -ro), c];
     const arcEnd: [number, number] = [c, c + (qy ? ro : -ro)];
-    const sweep = (qx ^ qy) ? 1 : 0;
+    const sweep = (qx ^ qy) ? 0 : 1;
     const d =
       `M${f(X(startTop[0]))} ${f(Y(startTop[1]))}L${f(X(cx))} ${f(Y(cy))}L${f(X(sideMid[0]))} ${f(Y(sideMid[1]))}` +
       `L${f(X(arcStart[0]))} ${f(Y(arcStart[1]))}A${f(ro)} ${f(ro)} 0 0 ${sweep} ${f(X(arcEnd[0]))} ${f(Y(arcEnd[1]))}Z`;

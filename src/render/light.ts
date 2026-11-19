@@ -38,8 +38,9 @@ export class FloorLight {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'floor-light';
     this.canvas.setAttribute('aria-hidden', 'true');
-    this.canvas.width = 108;
-    this.canvas.height = 108;
+    // The picture sits in the middle two thirds, so the blur has room to spill sideways.
+    this.canvas.width = 162;
+    this.canvas.height = 135;
     this.ctx = this.canvas.getContext('2d');
   }
 
@@ -48,7 +49,9 @@ export class FloorLight {
     if (!ctx) return;
     const side = state.panels.length === 1 ? 1 : 3;
     const cells = side * 3;
-    const cell = this.canvas.width / cells;
+    const cell = 108 / cells;
+    const ox = 27;
+    const oy = 27;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (let panel = 0; panel < state.panels.length; panel++) {
       const light = lights[panel];
@@ -61,7 +64,7 @@ export class FloorLight {
         // Unlit glass casts almost nothing on the floor.
         ctx.globalAlpha = 0.12 + 0.88 * light.level;
         ctx.fillStyle = flatColour(role, light.level, light.grisaille);
-        ctx.fillRect((px + (pane % 3)) * cell + 0.5, (py + Math.floor(pane / 3)) * cell + 0.5, cell - 1, cell - 1);
+        ctx.fillRect(ox + (px + (pane % 3)) * cell + 0.5, oy + (py + Math.floor(pane / 3)) * cell + 0.5, cell - 1, cell - 1);
       }
     }
     ctx.globalAlpha = 1;

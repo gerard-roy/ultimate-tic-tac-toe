@@ -401,6 +401,10 @@ export class WindowView {
     const motion = !!move && !reducedMotion();
     const total = l.side * l.side;
     this.svg.classList.toggle('is-title', !!opts.title);
+    // Behind the title panel the window is scenery, not a control.
+    if (opts.title) this.svg.setAttribute('aria-hidden', 'true');
+    else this.svg.removeAttribute('aria-hidden');
+    this.buttons[this.focusIndex].setAttribute('tabindex', opts.title ? '-1' : '0');
     this.svg.classList.toggle('is-over', state.result !== 'playing');
     this.svg.classList.toggle('is-won', state.result === 'amber' || state.result === 'cobalt');
 

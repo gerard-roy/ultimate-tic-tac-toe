@@ -188,6 +188,10 @@ export class SpaceScene implements Scene {
     this.named = placed;
   }
 
+  targets(): { id: string; x: number; y: number }[] {
+    return this.named.map((n) => ({ id: n.star.name, x: n.x, y: n.y }));
+  }
+
   frame(ctx: CanvasRenderingContext2D, t: number, dt: number, pointer: Pointer): Focus | null {
     const { w, h, lively } = this;
     const on = pointer.active;
