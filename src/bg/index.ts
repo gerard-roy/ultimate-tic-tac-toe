@@ -14,7 +14,7 @@ export const BACKGROUNDS: { id: BackgroundId; name: string }[] = [
 
 /** Reads a background name, accepting the names an earlier build saved. */
 export function toBackground(value: unknown): BackgroundId {
-  return typeof value === 'string' && value.startsWith('ocean') ? 'ocean' : 'space';
+  return typeof value === 'string' && value.startsWith('space') ? 'space' : 'ocean';
 }
 
 export interface Pointer {

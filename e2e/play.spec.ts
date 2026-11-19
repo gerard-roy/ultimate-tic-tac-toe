@@ -89,7 +89,10 @@ test('two players, undo, rematch and resume after reload', async ({ page }) => {
 
   await square(page, 1, 4).click();
   await square(page, 2, 1).click();
+  // A reload opens on the title screen, with the saved game one button away.
   await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-screen', 'title');
+  await page.getByRole('button', { name: 'Resume game' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-screen', 'game');
   const resumed = await state(page);
   expect(resumed.history).toEqual([{ panel: 1, pane: 4 }, { panel: 2, pane: 1 }]);

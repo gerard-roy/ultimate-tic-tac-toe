@@ -70,10 +70,12 @@ test('the picker offers only Space and Ocean', async ({ page }) => {
   await page.goto('./');
   await freshTitle(page);
   await expect(page.locator('#title-bg option')).toHaveText(['Space', 'Ocean']);
-  await page.locator('#title-bg').selectOption('ocean');
-  await expect(page.locator('html')).toHaveAttribute('data-bg', 'ocean');
-  await page.reload();
+  // Ocean is the default; a different choice is remembered.
   await expect(page.locator('#title-bg')).toHaveValue('ocean');
+  await page.locator('#title-bg').selectOption('space');
+  await expect(page.locator('html')).toHaveAttribute('data-bg', 'space');
+  await page.reload();
+  await expect(page.locator('#title-bg')).toHaveValue('space');
 });
 
 test('reduce motion draws a quieter ocean with fewer animals', async ({ page }) => {

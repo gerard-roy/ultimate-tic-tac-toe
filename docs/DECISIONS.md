@@ -85,6 +85,7 @@ Choices made where the spec was open, and places where a later request from the 
 
 ## Two backgrounds
 
-58. The owner cut the backgrounds to two, named "Space" and "Ocean", each using what was the lively version. The calm versions and the stone room are no longer choices, and the default is Space. Entries 1, 33 and 44 above are superseded where they mention them.
+58. The owner cut the backgrounds to two, named "Space" and "Ocean", each using what was the lively version. The calm versions and the stone room are no longer choices, and the default is Ocean. Entries 1, 33 and 44 above are superseded where they mention them.
 59. With reduce motion on, Space and Ocean draw with fewer things and less movement. That is the old calm drawing, kept only for this setting.
 60. `?bg=none` shows no scenery. It is not offered on screen and exists for the tests.
+61. The page always opens on the title screen. When a game is saved, the title shows a "Resume game" button; starting a new game replaces the save. Entry 9 is superseded.

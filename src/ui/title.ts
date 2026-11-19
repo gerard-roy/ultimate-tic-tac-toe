@@ -38,6 +38,8 @@ export function buildTitle(opts: {
   background: BackgroundId;
   onVariant(v: Variant): void;
   onBackground(id: BackgroundId): void;
+  /** Set when a saved game can be picked up again. */
+  onResume?: () => void;
   onPlay(choice: TitleChoice): void;
 }): HTMLElement {
   let variant = opts.variant;
@@ -66,10 +68,13 @@ export function buildTitle(opts: {
     tally.textContent = t ? `Against ${OPPONENTS[mode].name}: ${t.win} won, ${t.loss} lost, ${t.draw} drawn.` : '';
   };
 
+  const resume = opts.onResume ? h('button', { class: 'resume', type: 'button', text: 'Resume game' }) : null;
+  resume?.addEventListener('click', () => opts.onResume?.());
   const play = h('button', { class: 'play', type: 'submit', text: 'Play' });
   const form = h(
     'form',
     { class: 'title-panel', 'data-solid': true, 'aria-label': 'New game' },
+    resume,
     radios('game', 'Game', GAMES, variant, 'choices-row', (v) => {
       variant = v;
       opts.onVariant(v);

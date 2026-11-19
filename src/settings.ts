@@ -25,7 +25,7 @@ export const DEFAULTS: Settings = {
   muted: false,
   reduceMotion: null,
   confirmTaps: false,
-  background: 'space',
+  background: 'ocean',
   variant: 'cube',
   mode: 'glazier',
 };

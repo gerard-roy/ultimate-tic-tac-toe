@@ -167,9 +167,10 @@ function showResult(): void {
 }
 
 // ---------- Screens ----------
-function showTitle(): void {
+/** `fresh` drops any saved game. The page opens with it false, so a saved game can still be resumed. */
+function showTitle(fresh = true): void {
   game.stop();
-  game.clearSave();
+  if (fresh) game.clearSave();
   screen = 'title';
   window.clearTimeout(resultTimer);
   result.hidden = true;
@@ -190,6 +191,12 @@ function showTitle(): void {
         buildView();
         draw();
       },
+      onResume: Game.hasSave()
+        ? () =>
+            startGame(() => {
+              if (!game.resume()) showTitle();
+            })
+        : undefined,
       onBackground: (id) => {
         settings.background = id;
         params.delete('bg');
@@ -238,7 +245,7 @@ function openMenu(): void {
       params.delete('bg');
       applySettings();
     },
-    onNewGame: showTitle,
+    onNewGame: () => showTitle(),
   });
   menuHolder.replaceChildren(menu);
   menu.showModal();
@@ -259,7 +266,7 @@ rematchBtn.addEventListener('click', () => {
   sound.unlock();
   game.rematch();
 });
-changeBtn.addEventListener('click', showTitle);
+changeBtn.addEventListener('click', () => showTitle());
 
 window.addEventListener('pointerdown', () => sound.unlock(), { passive: true });
 window.addEventListener('keydown', (e) => {
@@ -294,13 +301,8 @@ if (typeof matchMedia === 'function') {
 // ---------- Start ----------
 buildView();
 applySettings();
-if (Game.hasSave()) {
-  startGame(() => {
-    if (!game.resume()) showTitle();
-  });
-} else {
-  showTitle();
-}
+// Always open on the title screen; a saved game waits behind its Resume button.
+showTitle(false);
 
 // For the end-to-end tests.
 declare global {

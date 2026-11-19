@@ -13,9 +13,8 @@ export function watchConsole(page: Page): string[] {
   return problems;
 }
 
-/** A saved game resumes on load, so clear it to reach the title screen. */
+/** Clears any saved game, so the title screen shows no Resume button. */
 export async function freshTitle(page: Page): Promise<void> {
-  if ((await page.locator('html').getAttribute('data-screen')) === 'title') return;
   await page.evaluate(() => localStorage.removeItem('ttt3d.save'));
   await page.reload();
 }
