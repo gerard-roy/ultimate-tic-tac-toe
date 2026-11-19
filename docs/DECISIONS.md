@@ -55,9 +55,17 @@ Choices made where the spec was open, and places where a later request from the 
 ## Scenery
 
 33. Reduce motion swaps a lively background for its calm version.
-34. Named stars are placed in the open sky around the window, never behind it. Lively shows all 40; calm shows 22.
+34. Named stars are placed in the open sky around the window, never behind it.
 35. Star figures are rounded from published values; several are uncertain by 10% or more, and the card says "about" where it matters.
 36. The star picture is drawn from its temperature (colour), with larger convection cells on cool giants, and the Sun to the same scale.
 37. A touch has no hover, so a tap on the scenery acts as a pointer resting there for four seconds.
 38. The info card never takes pointer events, and it picks a side that keeps it off the window when it can.
 39. `?bg=` picks a background for one visit without changing the saved setting. The tests use it.
+40. **Constellations.** The owner asked for real constellations in place of the invented lines that joined lit stars. Each one is a real figure: reach any of its stars and its lines draw in, every star in it shines, and its name appears beneath. It lingers a few seconds after the pointer leaves, then fades.
+41. Star positions, brightness, colour index and distances for the figures come from the HYG catalogue v4.1 (CC BY-SA 4.0), through `scripts/make-constellations.py`. `src/bg/constellations.ts` is generated and carries that attribution.
+42. Which stars are joined is the common stick figure for each constellation, written by hand in the script; the catalogue does not hold lines.
+43. Each figure is a flat map of its own patch of sky, scaled to fit its space. Figures are not to scale with each other, and their places on screen do not follow the real sky.
+44. Eleven figures are defined. The screen shows as many as fit beside the window, in a fixed order starting with Orion: six lively or four calm at 1440 by 900, one under the window on a phone.
+45. Stars that are only in the HYG catalogue have no size on their card, because that catalogue has no radius. The 40 hand-written stars keep full cards.
+46. Inside a constellation, a star is named only when the pointer is right on it, so the figure stays readable. Catalogue stars outside the figures are scattered between them.
+47. The info card tries to leave the star's whole constellation uncovered.

@@ -4,8 +4,8 @@ export interface Star {
   constellation: string;
   /** Apparent magnitude: lower is brighter. */
   mag: number;
-  /** Radius in Suns. */
-  radius: number;
+  /** Radius in Suns, or null when this catalogue has no figure for it. */
+  radius: number | null;
   /** Surface temperature in kelvin. */
   temp: number;
   kind: string;

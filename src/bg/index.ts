@@ -37,6 +37,8 @@ export interface Focus {
   id: string;
   x: number;
   y: number;
+  /** An area the card should leave uncovered, such as the constellation the star belongs to. */
+  keep?: { x: number; y: number; w: number; h: number };
   card(): CardContent;
 }
 
@@ -46,6 +48,8 @@ export interface Scene {
   frame(ctx: CanvasRenderingContext2D, t: number, dt: number, pointer: Pointer): Focus | null;
   /** Points the pointer can rest on to open a card. Used by the tests. */
   targets(): { id: string; x: number; y: number }[];
+  /** Constellations on screen, for scenes that have them. */
+  figures?(): { name: string; show: number; stars: string[] }[];
 }
 
 const DWELL_MS = 420;
@@ -109,6 +113,10 @@ export class Background {
 
   targets(): { id: string; x: number; y: number }[] {
     return this.scene?.targets() ?? [];
+  }
+
+  figures(): { name: string; show: number; stars: string[] }[] {
+    return this.scene?.figures?.() ?? [];
   }
 
   get current(): BackgroundId {
@@ -176,7 +184,7 @@ export class Background {
       if (this.shownId && id !== this.shownId) this.hideCard();
     }
     if (focus && this.shownId !== id && now - this.focusSince >= DWELL_MS) this.showCard(focus);
-    else if (focus && this.shownId === id) this.place(focus.x, focus.y);
+    else if (focus && this.shownId === id) this.place(focus.x, focus.y, focus.keep);
   }
 
   private showCard(focus: Focus): void {
@@ -221,12 +229,12 @@ export class Background {
     card.appendChild(text);
     card.hidden = false;
     this.shownId = focus.id;
-    this.place(focus.x, focus.y);
+    this.place(focus.x, focus.y, focus.keep);
     requestAnimationFrame(() => card.classList.add('show'));
   }
 
   /** Beside the pointer, on whichever side keeps the card on screen and off the game. */
-  private place(x: number, y: number): void {
+  private place(x: number, y: number, keep?: { x: number; y: number; w: number; h: number }): void {
     const card = this.cardEl;
     const cw = card.offsetWidth;
     const ch = card.offsetHeight;
@@ -241,12 +249,15 @@ export class Background {
     const spots: [number, number][] = [
       [x + gap, clampY(y - ch / 2)],
       [x - gap - cw, clampY(y - ch / 2)],
+      // Clear of the whole constellation, below it or above it.
+      ...(keep ? ([[mid, keep.y + keep.h + 14], [mid, keep.y - ch - 14]] as [number, number][]) : []),
       [mid, y + gap],
       [mid, y - gap - ch],
     ];
+    const open = ([l, t]: [number, number]) => !keep || l + cw < keep.x || l > keep.x + keep.w || t + ch < keep.y || t > keep.y + keep.h;
     const fits = ([l, t]: [number, number]) => l >= 8 && t >= 8 && l + cw <= this.w - 8 && t + ch <= this.h - 8;
     const clear = ([l, t]: [number, number]) => !hole || l + cw < hole.left || l > hole.right || t + ch < hole.top || t > hole.bottom;
-    const [left, top] = spots.find((s) => fits(s) && clear(s)) ?? spots.find(fits) ?? [clampX(x + gap), clampY(y + gap)];
+    const [left, top] = spots.find((s) => fits(s) && clear(s) && open(s)) ?? spots.find((s) => fits(s) && clear(s)) ?? spots.find(fits) ?? [clampX(x + gap), clampY(y + gap)];
     card.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
   }
 

@@ -3,7 +3,7 @@
 Ultimate Tic-Tac-Toe as a stained-glass window, with classic nine-square tic-tac-toe as a second game. Everything is drawn and synthesized in code: there are no image, video or audio files.
 
 - Play against three computer opponents (Apprentice, Glazier, Master) or with two players on one device.
-- Pick a background: Space or Ocean, each in a lively and a calm version, or the plain stone room. The scenery answers the pointer. Rest on a star or an animal to read about it. It never affects the game.
+- Pick a background: Space or Ocean, each in a lively and a calm version, or the plain stone room. The scenery answers the pointer. Reach a star and its constellation draws itself. Rest on a star or an animal to read about it. It never affects the game.
 - The full spec is in [docs/SPEC.md](docs/SPEC.md). Choices made where the spec was open, and where later requests override it, are in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Run
@@ -36,6 +36,10 @@ npm run preview
 ```
 
 Every push to `main` runs `.github/workflows/pages.yml`: unit tests, build, end-to-end tests, then a deploy of `dist/` to GitHub Pages. In the repository settings, Pages must have its source set to "GitHub Actions".
+
+## Data
+
+Constellation star data in `src/bg/constellations.ts` is generated from the [HYG star catalogue](https://github.com/astronexus/HYG-Database) v4.1, licensed CC BY-SA 4.0. Regenerate it with `python3 scripts/make-constellations.py path/to/hygdata_v41.csv`.
 
 ## Layout
 

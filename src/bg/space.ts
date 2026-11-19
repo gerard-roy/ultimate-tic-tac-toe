@@ -1,5 +1,9 @@
-/** Night sky. Stars light up under the pointer; rest on a named star to read about it. */
+/**
+ * Night sky. Stars light up under the pointer, real constellations draw themselves
+ * when you reach them, and resting on a named star shows a card about it.
+ */
 import { seeded, type CardContent, type Focus, type Pointer, type Scene } from './index';
+import { FIGURES, type Figure } from './constellations';
 import { STARS, brightnessWords, colourName, sizeWords, tempToRgb, type Star } from './stars';
 
 interface Named {
@@ -9,9 +13,21 @@ interface Named {
   r: number;
   rgb: [number, number, number];
   lit: number;
+  /** How close the pointer is, 0 to 1. Drives the name label. */
+  near: number;
   phase: number;
+  /** The constellation this star belongs to, if it is part of one on screen. */
+  figure: Shown | null;
   /** Halo drawn once, so a frame costs one blit a star instead of a gradient. */
   sprite: HTMLCanvasElement;
+}
+/** A constellation placed on screen. */
+interface Shown {
+  figure: Figure;
+  stars: Named[];
+  /** 0 hidden to 1 fully drawn. */
+  show: number;
+  box: { x: number; y: number; w: number; h: number };
 }
 interface SmallStar {
   x: number;
@@ -62,6 +78,7 @@ export class SpaceScene implements Scene {
   private glow: HTMLCanvasElement | null = null;
   private layers: { style: string; stars: SmallStar[] }[][] = [];
   private named: Named[] = [];
+  private shown: Shown[] = [];
   private twinklers: Twinkler[] = [];
   private meteors: Meteor[] = [];
   private dust: Dust[] = [];
@@ -180,41 +197,109 @@ export class SpaceScene implements Scene {
       });
     }
 
-    // Named stars sit in the open sky around the game, never behind it.
-    const want = this.lively ? STARS.length : 22;
-    const order = STARS.map((star, i) => ({ star, k: i < 12 ? -1 + rnd() * 0.01 : rnd() })).sort((a, b) => a.k - b.k);
+    // Constellations and named stars sit in the open sky around the game, never behind it.
     const hole = avoid ? { l: avoid.left - 26, t: avoid.top - 26, r: avoid.right + 26, b: avoid.bottom + 26 } : null;
     const placed: Named[] = [];
+    const make = (star: Star, x: number, y: number, figure: Shown | null): Named => {
+      const rgb = tempToRgb(star.temp);
+      const [sprite, sc] = offscreen(96, 96);
+      const hg = sc.createRadialGradient(48, 48, 0, 48, 48, 48);
+      hg.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.9)`);
+      hg.addColorStop(0.25, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.38)`);
+      hg.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
+      sc.fillStyle = hg;
+      sc.fillRect(0, 0, 96, 96);
+      const n: Named = { star, sprite, x, y, r: Math.max(1.5, Math.min(4.2, 3.4 - star.mag * 0.45)), rgb, lit: 0, near: 0, phase: rnd() * 6.283, figure };
+      placed.push(n);
+      return n;
+    };
+
+    // Free areas: the margins beside the game, or the strip under it on a narrow screen.
+    const areas: { x: number; y: number; w: number; h: number }[] = [];
+    const top = 64;
+    const bottom = h - 34;
+    if (!hole) areas.push({ x: 20, y: top, w: w - 40, h: bottom - top });
+    else {
+      if (hole.l - 20 >= 170) areas.push({ x: 20, y: top, w: hole.l - 20, h: bottom - top });
+      if (w - 20 - hole.r >= 170) areas.push({ x: hole.r, y: top, w: w - 20 - hole.r, h: bottom - top });
+      if (areas.length === 0 && bottom - (hole.b + 90) >= 150) areas.push({ x: 20, y: hole.b + 90, w: w - 40, h: bottom - (hole.b + 90) });
+    }
+    // A lively sky packs in more constellations; a calm one gives a few more room.
+    const cell = this.lively ? 240 : 330;
+    const boxes: { x: number; y: number; w: number; h: number }[][] = areas.map((a) => {
+      const cols = Math.max(1, Math.floor(a.w / cell));
+      const rows = Math.max(1, Math.floor(a.h / (cell * 0.95)));
+      const list: { x: number; y: number; w: number; h: number }[] = [];
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) list.push({ x: a.x + (c * a.w) / cols, y: a.y + (r * a.h) / rows, w: a.w / cols, h: a.h / rows });
+      return list;
+    });
+    // Deal the boxes out side by side, so both margins fill evenly.
+    const slots: { x: number; y: number; w: number; h: number }[] = [];
+    for (let i = 0; boxes.some((list) => i < list.length); i++) for (const list of boxes) if (i < list.length) slots.push(list[i]);
+
+    const byName = new Map(STARS.map((st) => [st.name, st]));
+    const used = new Set<string>();
+    this.shown = [];
+    slots.slice(0, FIGURES.length).forEach((box, i) => {
+      const figure = FIGURES[i];
+      // Flat map of a small patch of sky: east is to the left, north is up.
+      const ra0 = figure.stars.reduce((n, st) => n + st.ra, 0) / figure.stars.length;
+      const dec0 = figure.stars.reduce((n, st) => n + st.dec, 0) / figure.stars.length;
+      const k = Math.cos((dec0 * Math.PI) / 180) * 15;
+      const flat = figure.stars.map((st) => ({ x: -(st.ra - ra0) * k, y: -(st.dec - dec0) }));
+      const xs = flat.map((f) => f.x);
+      const ys = flat.map((f) => f.y);
+      const spanX = Math.max(...xs) - Math.min(...xs) || 1;
+      const spanY = Math.max(...ys) - Math.min(...ys) || 1;
+      // Room is kept under the figure for its name.
+      const scale = Math.min((box.w - 70) / spanX, (box.h - 96) / spanY);
+      const cx = box.x + box.w / 2 - ((Math.max(...xs) + Math.min(...xs)) / 2) * scale;
+      const cy = box.y + (box.h - 44) / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2) * scale;
+      const entry: Shown = { figure, stars: [], show: 0, box };
+      figure.stars.forEach((fs, j) => {
+        const known = byName.get(fs.name);
+        // Stars outside the hand-written catalogue get what the HYG catalogue gives: no size.
+        const star: Star = known ?? {
+          name: fs.name,
+          constellation: figure.name,
+          mag: fs.mag,
+          radius: null,
+          temp: Math.round(4600 * (1 / (0.92 * fs.ci + 1.7) + 1 / (0.92 * fs.ci + 0.62))),
+          kind: 'star',
+          ly: fs.ly,
+          note: `Part of ${figure.name}, ${figure.meaning}.`,
+        };
+        used.add(star.name);
+        entry.stars.push(make(star, cx + flat[j].x * scale, cy + flat[j].y * scale, entry));
+      });
+      this.shown.push(entry);
+    });
+
+    // The rest of the catalogue is scattered between them as lone stars.
+    const lone = STARS.filter((st) => !used.has(st.name));
+    const want = Math.min(lone.length, this.lively ? 14 : 7);
     const gap = Math.max(64, Math.min(120, Math.sqrt((w * h) / 60)));
-    for (const { star } of order) {
-      if (placed.length >= want) break;
+    let count = 0;
+    for (const star of lone) {
+      if (count >= want) break;
       for (let tries = 0; tries < 60; tries++) {
         const x = 26 + rnd() * (w - 52);
         const y = 64 + rnd() * (h - 100);
         if (hole && x > hole.l && x < hole.r && y > hole.t && y < hole.b) continue;
-        if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < gap)) continue;
-        const rgb = tempToRgb(star.temp);
-        const [sprite, sc] = offscreen(96, 96);
-        const hg = sc.createRadialGradient(48, 48, 0, 48, 48, 48);
-        hg.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.9)`);
-        hg.addColorStop(0.25, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.38)`);
-        hg.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
-        sc.fillStyle = hg;
-        sc.fillRect(0, 0, 96, 96);
-        placed.push({
-          star,
-          sprite,
-          x,
-          y,
-          r: Math.max(1.5, Math.min(4.2, 3.4 - star.mag * 0.45)),
-          rgb,
-          lit: 0,
-          phase: rnd() * 6.283,
-        });
+        // Lone stars keep out of the constellations, so the figures read cleanly.
+        if (this.shown.some((f) => x > f.box.x && x < f.box.x + f.box.w && y > f.box.y && y < f.box.y + f.box.h)) continue;
+        if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < gap)) continue;
+        make(star, x, y, null);
+        count++;
         break;
       }
     }
     this.named = placed;
+  }
+
+  /** Constellations on screen and how far each is drawn. Used by the tests. */
+  figures(): { name: string; show: number; stars: string[] }[] {
+    return this.shown.map((f) => ({ name: f.figure.name, show: f.show, stars: f.stars.map((n) => n.star.name) }));
   }
 
   targets(): { id: string; x: number; y: number }[] {
@@ -251,7 +336,15 @@ export class SpaceScene implements Scene {
     const reach = (x: number, y: number) => (on ? Math.max(0, 1 - Math.hypot(x - pointer.x, y - pointer.y) / REACH) : 0);
     const ease = (cur: number, target: number) => cur + (target - cur) * Math.min(1, dt * (target > cur ? 10 : lively ? 1.1 : 0.7));
 
-    const litPoints: { x: number; y: number; lit: number }[] = [];
+    // A constellation draws itself when the pointer reaches any of its stars, and lingers after.
+    for (const f of this.shown) {
+      const b = f.box;
+      const inside = on && pointer.x > b.x && pointer.x < b.x + b.w && pointer.y > b.y && pointer.y < b.y + b.h;
+      const touched = inside && f.stars.some((n) => Math.hypot(n.x - pointer.x, n.y - pointer.y) < 70);
+      if (touched) f.show = Math.min(1, f.show + dt * 1.1);
+      else f.show = Math.max(0, f.show - dt * (lively ? 0.16 : 0.22));
+    }
+
     for (const s of this.twinklers) {
       s.lit = ease(s.lit, reach(s.x, s.y));
       const tw = 0.55 + 0.45 * Math.sin(t * s.speed + s.phase);
@@ -268,7 +361,6 @@ export class SpaceScene implements Scene {
           ctx.drawImage(this.glow, s.x - gr, s.y - gr, gr * 2, gr * 2);
           ctx.globalAlpha = 1;
         }
-        if (s.lit > 0.25) litPoints.push(s);
       }
     }
 
@@ -276,7 +368,9 @@ export class SpaceScene implements Scene {
     let nearestD = 30;
     ctx.globalCompositeOperation = 'lighter';
     for (const s of this.named) {
-      s.lit = ease(s.lit, reach(s.x, s.y));
+      s.near = ease(s.near, reach(s.x, s.y));
+      // Every star of a drawn constellation shines, not only the ones under the pointer.
+      s.lit = Math.max(s.near, s.figure ? Math.min(1, s.figure.show * 1.5) * 0.7 : 0);
       const d = on ? Math.hypot(s.x - pointer.x, s.y - pointer.y) : Infinity;
       if (d < nearestD) {
         nearestD = d;
@@ -321,23 +415,32 @@ export class SpaceScene implements Scene {
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r * (0.8 + 0.5 * s.lit), 0, 6.283);
       ctx.fill();
-      if (s.lit > 0.25) litPoints.push(s);
     }
 
-    // Lit neighbours join up, like a constellation being sketched.
-    ctx.lineWidth = 1;
-    for (let i = 0; i < litPoints.length && i < 48; i++) {
-      for (let j = i + 1; j < litPoints.length && j < 48; j++) {
-        const a = litPoints[i];
-        const b = litPoints[j];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (d > 120) continue;
-        ctx.strokeStyle = `rgba(255, 241, 194, ${Math.min(a.lit, b.lit) * 0.3 * (1 - d / 120)})`;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-      }
+    // The figure's lines draw in one after another.
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = 'round';
+    for (const f of this.shown) {
+      if (f.show <= 0) continue;
+      const n = f.figure.lines.length;
+      const alpha = Math.min(1, f.show * 3) * 0.7;
+      ctx.strokeStyle = `rgba(255, 241, 194, ${alpha})`;
+      ctx.beginPath();
+      f.figure.lines.forEach(([ia, ib], i) => {
+        const part = Math.max(0, Math.min(1, f.show * 1.25 * n - i));
+        if (part <= 0) return;
+        const a = f.stars[ia];
+        const b = f.stars[ib];
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const ux = (b.x - a.x) / len;
+        const uy = (b.y - a.y) / len;
+        // Stop short of each star so the line does not cross its core.
+        const from = Math.min(len / 2, a.r + 6);
+        const to = from + (len - Math.min(len / 2, b.r + 6) - from) * part;
+        ctx.moveTo(a.x + ux * from, a.y + uy * from);
+        ctx.lineTo(a.x + ux * to, a.y + uy * to);
+      });
+      ctx.stroke();
     }
 
     if (lively) {
@@ -412,14 +515,32 @@ export class SpaceScene implements Scene {
     ctx.font = "500 14px 'Alegreya Sans', 'Gill Sans', 'Trebuchet MS', sans-serif";
     ctx.textBaseline = 'middle';
     for (const s of this.named) {
-      if (s.lit < 0.35) continue;
-      const a = Math.min(1, (s.lit - 0.35) * 2.4);
+      // Inside a constellation only the stars right under the pointer are named, to keep the figure clear.
+      const from = s.figure ? 0.78 : 0.35;
+      if (s.near < from) continue;
+      const a = Math.min(1, (s.near - from) * (s.figure ? 6 : 2.4));
       const label = s.star.name;
       const tw = ctx.measureText(label).width;
       const right = s.x + 14 + tw < w - 6;
       ctx.fillStyle = `rgba(241, 236, 225, ${a})`;
       ctx.fillText(label, right ? s.x + 14 : s.x - 14 - tw, s.y + 1);
     }
+
+    // Each constellation is named under its figure.
+    ctx.textAlign = 'center';
+    for (const f of this.shown) {
+      if (f.show <= 0.02) continue;
+      const a = Math.min(1, f.show * 2);
+      const cx = Math.max(90, Math.min(w - 90, f.box.x + f.box.w / 2));
+      const y = f.box.y + f.box.h - 34;
+      ctx.font = "400 21px 'Federo', Optima, Candara, serif";
+      ctx.fillStyle = `rgba(255, 241, 194, ${a})`;
+      ctx.fillText(f.figure.name, cx, y);
+      ctx.font = "400 14px 'Alegreya Sans', 'Gill Sans', 'Trebuchet MS', sans-serif";
+      ctx.fillStyle = `rgba(167, 159, 181, ${a})`;
+      ctx.fillText(f.figure.meaning, cx, y + 20, f.box.w - 8);
+    }
+    ctx.textAlign = 'left';
 
     if (!nearest) return null;
     const star = nearest;
@@ -428,7 +549,16 @@ export class SpaceScene implements Scene {
     ctx.beginPath();
     ctx.arc(star.x, star.y, 13 + Math.sin(t * 3) * 1.2, 0, 6.283);
     ctx.stroke();
-    return { id: star.star.name, x: star.x, y: star.y, card: () => starCard(star.star) };
+    let keep: { x: number; y: number; w: number; h: number } | undefined;
+    if (star.figure) {
+      const xs = star.figure.stars.map((n) => n.x);
+      const ys = star.figure.stars.map((n) => n.y);
+      // The figure and the name written under it.
+      const b = star.figure.box;
+      const top = Math.min(...ys) - 12;
+      keep = { x: Math.min(...xs) - 12, y: top, w: Math.max(...xs) - Math.min(...xs) + 24, h: b.y + b.h - 4 - top };
+    }
+    return { id: star.star.name, x: star.x, y: star.y, keep, card: () => starCard(star.star) };
   }
 }
 
@@ -439,14 +569,14 @@ function starCard(star: Star): CardContent {
     subtitle: `${star.kind} in ${star.constellation}`,
     rows: [
       ['Brightness', `Magnitude ${star.mag.toFixed(star.mag % 1 === 0 ? 0 : 2).replace('-', '−').replace(/(\.\d)0$/, '$1')}, ${brightnessWords(star.mag)}`],
-      ['Size', sizeWords(star.radius)],
+      ...(star.radius === null ? [] : ([['Size', sizeWords(star.radius)]] as [string, string][])),
       ['Colour', `${colourName(star.temp)}, about ${(Math.round(star.temp / 100) * 100).toLocaleString('en')} K`],
       ['Distance', `${star.ly.toLocaleString('en')} light-years`],
     ],
     note: star.note,
     draw(ctx, size) {
-      const rnd = seeded(Math.round(star.temp + star.radius * 10));
-      const ratio = star.radius;
+      const rnd = seeded(Math.round(star.temp + (star.radius ?? 1) * 10));
+      const ratio = star.radius ?? 1;
       const big = size * 0.34;
       const sr = Math.max(2.2, big * Math.min(1, ratio));
       const sunR = Math.max(1.1, big * Math.min(1, 1 / ratio));
@@ -491,7 +621,9 @@ function starCard(star: Star): CardContent {
       ctx.font = "11px 'Alegreya Sans', 'Gill Sans', sans-serif";
       ctx.fillStyle = '#A79FB5';
       ctx.textBaseline = 'alphabetic';
-      if (ratio >= 1) {
+      if (star.radius === null) {
+        // No size on record: the picture shows colour only.
+      } else if (ratio >= 1) {
         const sx = size - 12;
         const sy = size - 20;
         ctx.fillStyle = '#FFE9A8';

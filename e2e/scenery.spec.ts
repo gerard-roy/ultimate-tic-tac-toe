@@ -32,6 +32,24 @@ for (const bg of ['space-lively', 'space-calm']) {
   });
 }
 
+for (const bg of ['space-lively', 'space-calm']) {
+  test(`${bg}: reaching a star draws its whole constellation`, async ({ page }) => {
+    await open(page, bg);
+    const figures = await page.evaluate(() => window.__ninefold.background.figures());
+    expect(figures.map((f) => f.name)).toContain('Orion');
+    expect(figures.every((f) => f.show === 0)).toBe(true);
+    const orion = figures.find((f) => f.name === 'Orion')!;
+    expect(orion.stars).toEqual(['Betelgeuse', 'Rigel', 'Bellatrix', 'Saiph', 'Alnitak', 'Alnilam', 'Mintaka', 'Meissa']);
+    const star = await page.evaluate(() => window.__ninefold.background.targets().find((t) => t.id === 'Rigel')!);
+    await page.mouse.move(star.x - 30, star.y - 20);
+    await page.mouse.move(star.x, star.y, { steps: 4 });
+    await page.waitForFunction(() => window.__ninefold.background.figures().find((f) => f.name === 'Orion')!.show > 0.95);
+    // Only the constellation that was reached is drawn.
+    const after = await page.evaluate(() => window.__ninefold.background.figures());
+    expect(after.filter((f) => f.show > 0).map((f) => f.name)).toEqual(['Orion']);
+  });
+}
+
 for (const bg of ['ocean-lively', 'ocean-calm']) {
   test(`${bg}: animals answer the pointer and never touch the game`, async ({ page }) => {
     const problems = watchConsole(page);
