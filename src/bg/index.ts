@@ -156,6 +156,7 @@ export class Background {
       const dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
       this.pointer.speed *= Math.pow(0.02, dt);
+      if (this.pointer.active && document.querySelector('dialog[open]')) this.pointer.active = false;
       const focus = this.scene.frame(ctx, now / 1000, dt, this.pointer);
       this.track(focus, now);
     };
@@ -232,13 +233,17 @@ export class Background {
     const gap = 26;
     const clampX = (v: number) => Math.max(8, Math.min(this.w - cw - 8, v));
     const clampY = (v: number) => Math.max(8, Math.min(this.h - ch - 8, v));
+    const hole = this.avoid();
+    // Above or below, slide sideways if that keeps the card off the game.
+    let mid = clampX(x - cw / 2);
+    if (hole && x < hole.left) mid = Math.max(8, Math.min(mid, hole.left - cw - 6));
+    else if (hole && x > hole.right) mid = Math.min(this.w - cw - 8, Math.max(mid, hole.right + 6));
     const spots: [number, number][] = [
       [x + gap, clampY(y - ch / 2)],
       [x - gap - cw, clampY(y - ch / 2)],
-      [clampX(x - cw / 2), y + gap],
-      [clampX(x - cw / 2), y - gap - ch],
+      [mid, y + gap],
+      [mid, y - gap - ch],
     ];
-    const hole = this.avoid();
     const fits = ([l, t]: [number, number]) => l >= 8 && t >= 8 && l + cw <= this.w - 8 && t + ch <= this.h - 8;
     const clear = ([l, t]: [number, number]) => !hole || l + cw < hole.left || l > hole.right || t + ch < hole.top || t > hole.bottom;
     const [left, top] = spots.find((s) => fits(s) && clear(s)) ?? spots.find(fits) ?? [clampX(x + gap), clampY(y + gap)];

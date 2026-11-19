@@ -10,6 +10,13 @@ interface Named {
   rgb: [number, number, number];
   lit: number;
   phase: number;
+  /** Halo drawn once, so a frame costs one blit a star instead of a gradient. */
+  sprite: HTMLCanvasElement;
+}
+interface SmallStar {
+  x: number;
+  y: number;
+  size: number;
 }
 interface Twinkler {
   x: number;
@@ -52,7 +59,8 @@ export class SpaceScene implements Scene {
   private w = 0;
   private h = 0;
   private sky: HTMLCanvasElement | null = null;
-  private layers: HTMLCanvasElement[] = [];
+  private glow: HTMLCanvasElement | null = null;
+  private layers: { style: string; stars: SmallStar[] }[][] = [];
   private named: Named[] = [];
   private twinklers: Twinkler[] = [];
   private meteors: Meteor[] = [];
@@ -128,21 +136,33 @@ export class SpaceScene implements Scene {
     s.globalCompositeOperation = 'source-over';
     this.sky = sky;
 
-    // Two drifting layers of small stars.
+    // Two drifting layers of small stars, kept as points: far cheaper to draw than full-screen layers.
     this.layers = [];
+    const tints = ['255, 214, 170', '255, 244, 234', '202, 216, 255', '170, 191, 255'];
     for (let l = 0; l < 2; l++) {
-      const [c, cx] = offscreen(w, h);
       const n = Math.round((w * h) / (l === 0 ? 2600 : 5200));
+      const groups: SmallStar[][] = tints.map(() => []);
       for (let i = 0; i < n; i++) {
-        const [r0, g0, b0] = tempToRgb(3000 + rnd() * rnd() * 24000);
-        cx.fillStyle = `rgba(${r0}, ${g0}, ${b0}, ${0.35 + rnd() * 0.5})`;
-        const r = (l === 0 ? 0.45 : 0.7) + rnd() * 0.6;
-        cx.beginPath();
-        cx.arc(rnd() * w, rnd() * h, r, 0, 6.283);
-        cx.fill();
+        const size = (l === 0 ? 0.9 : 1.4) + rnd() * 1.1;
+        groups[Math.floor(rnd() * rnd() * 4)].push({ x: rnd() * w, y: rnd() * h, size });
       }
-      this.layers.push(c);
+      this.layers.push(groups.map((stars, i) => ({ style: `rgba(${tints[i]}, ${l === 0 ? 0.6 : 0.8})`, stars })));
+      // A calm sky does not drift, so its small stars are painted straight onto it.
+      if (!this.lively) {
+        for (const g2 of this.layers[l]) {
+          s.fillStyle = g2.style;
+          for (const st of g2.stars) s.fillRect(PAD + st.x, PAD + st.y, st.size, st.size);
+        }
+      }
     }
+
+    const [glow, gc] = offscreen(64, 64);
+    const glowFill = gc.createRadialGradient(32, 32, 0, 32, 32, 32);
+    glowFill.addColorStop(0, 'rgba(235, 240, 255, 1)');
+    glowFill.addColorStop(1, 'rgba(235, 240, 255, 0)');
+    gc.fillStyle = glowFill;
+    gc.fillRect(0, 0, 64, 64);
+    this.glow = glow;
 
     // Twinkling stars that answer the pointer.
     const tw = Math.round(((w * h) / 9000) * (this.lively ? 1 : 0.6));
@@ -173,12 +193,21 @@ export class SpaceScene implements Scene {
         const y = 64 + rnd() * (h - 100);
         if (hole && x > hole.l && x < hole.r && y > hole.t && y < hole.b) continue;
         if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < gap)) continue;
+        const rgb = tempToRgb(star.temp);
+        const [sprite, sc] = offscreen(96, 96);
+        const hg = sc.createRadialGradient(48, 48, 0, 48, 48, 48);
+        hg.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.9)`);
+        hg.addColorStop(0.25, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.38)`);
+        hg.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
+        sc.fillStyle = hg;
+        sc.fillRect(0, 0, 96, 96);
         placed.push({
           star,
+          sprite,
           x,
           y,
           r: Math.max(1.5, Math.min(4.2, 3.4 - star.mag * 0.45)),
-          rgb: tempToRgb(star.temp),
+          rgb,
           lit: 0,
           phase: rnd() * 6.283,
         });
@@ -204,13 +233,19 @@ export class SpaceScene implements Scene {
     if (lively) this.drift += dt;
 
     if (this.sky) ctx.drawImage(this.sky, -PAD + this.px * 6, -PAD + this.py * 6);
-    this.layers.forEach((layer, i) => {
-      const speed = lively ? (i === 0 ? 2.2 : 5) : 0;
-      const ox = (((this.drift * speed + this.px * (i === 0 ? 10 : 18)) % w) + w) % w;
-      const oy = this.py * (i === 0 ? 10 : 18);
-      ctx.drawImage(layer, ox, oy);
-      ctx.drawImage(layer, ox - w, oy);
-    });
+    if (lively) {
+      this.layers.forEach((layer, i) => {
+        const ox = this.drift * (i === 0 ? 2.2 : 5) + this.px * (i === 0 ? 10 : 18);
+        const oy = this.py * (i === 0 ? 10 : 18);
+        for (const group of layer) {
+          ctx.fillStyle = group.style;
+          for (const st of group.stars) {
+            const x = (((st.x + ox) % w) + w) % w;
+            ctx.fillRect(x, st.y + oy, st.size, st.size);
+          }
+        }
+      });
+    }
 
     // Light falls off with distance from the pointer; stars fade slowly once it has passed.
     const reach = (x: number, y: number) => (on ? Math.max(0, 1 - Math.hypot(x - pointer.x, y - pointer.y) / REACH) : 0);
@@ -228,11 +263,11 @@ export class SpaceScene implements Scene {
       ctx.fill();
       if (s.lit > 0.05) {
         const gr = r * 7;
-        const gg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, gr);
-        gg.addColorStop(0, `rgba(${s.rgb}, ${0.5 * s.lit})`);
-        gg.addColorStop(1, `rgba(${s.rgb}, 0)`);
-        ctx.fillStyle = gg;
-        ctx.fillRect(s.x - gr, s.y - gr, gr * 2, gr * 2);
+        if (this.glow) {
+          ctx.globalAlpha = 0.5 * s.lit;
+          ctx.drawImage(this.glow, s.x - gr, s.y - gr, gr * 2, gr * 2);
+          ctx.globalAlpha = 1;
+        }
         if (s.lit > 0.25) litPoints.push(s);
       }
     }
@@ -250,30 +285,37 @@ export class SpaceScene implements Scene {
       const pulse = 1 + (lively ? 0.12 : 0.05) * Math.sin(t * (lively ? 1.3 : 0.5) + s.phase);
       const rgb = `${s.rgb[0]}, ${s.rgb[1]}, ${s.rgb[2]}`;
       const halo = s.r * (5 + s.lit * 9) * pulse;
-      const hg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, halo);
-      hg.addColorStop(0, `rgba(${rgb}, ${0.5 + 0.4 * s.lit})`);
-      hg.addColorStop(0.25, `rgba(${rgb}, ${0.16 + 0.25 * s.lit})`);
-      hg.addColorStop(1, `rgba(${rgb}, 0)`);
-      ctx.fillStyle = hg;
-      ctx.fillRect(s.x - halo, s.y - halo, halo * 2, halo * 2);
+      ctx.globalAlpha = 0.55 + 0.45 * s.lit;
+      ctx.drawImage(s.sprite, s.x - halo, s.y - halo, halo * 2, halo * 2);
+      ctx.globalAlpha = 1;
       // Diffraction spikes grow as the star lights.
       const spike = s.r * (4 + s.lit * 16) * pulse;
       ctx.lineWidth = 1;
-      for (let k = 0; k < 2; k++) {
-        const sg = k === 0 ? ctx.createLinearGradient(s.x - spike, s.y, s.x + spike, s.y) : ctx.createLinearGradient(s.x, s.y - spike, s.x, s.y + spike);
-        sg.addColorStop(0, `rgba(${rgb}, 0)`);
-        sg.addColorStop(0.5, `rgba(255, 255, 255, ${0.35 + 0.6 * s.lit})`);
-        sg.addColorStop(1, `rgba(${rgb}, 0)`);
-        ctx.strokeStyle = sg;
+      if (s.lit < 0.03) {
+        ctx.strokeStyle = `rgba(${rgb}, 0.22)`;
         ctx.beginPath();
-        if (k === 0) {
-          ctx.moveTo(s.x - spike, s.y);
-          ctx.lineTo(s.x + spike, s.y);
-        } else {
-          ctx.moveTo(s.x, s.y - spike);
-          ctx.lineTo(s.x, s.y + spike);
-        }
+        ctx.moveTo(s.x - spike, s.y);
+        ctx.lineTo(s.x + spike, s.y);
+        ctx.moveTo(s.x, s.y - spike);
+        ctx.lineTo(s.x, s.y + spike);
         ctx.stroke();
+      } else {
+        for (let k = 0; k < 2; k++) {
+          const sg = k === 0 ? ctx.createLinearGradient(s.x - spike, s.y, s.x + spike, s.y) : ctx.createLinearGradient(s.x, s.y - spike, s.x, s.y + spike);
+          sg.addColorStop(0, `rgba(${rgb}, 0)`);
+          sg.addColorStop(0.5, `rgba(255, 255, 255, ${0.35 + 0.6 * s.lit})`);
+          sg.addColorStop(1, `rgba(${rgb}, 0)`);
+          ctx.strokeStyle = sg;
+          ctx.beginPath();
+          if (k === 0) {
+            ctx.moveTo(s.x - spike, s.y);
+            ctx.lineTo(s.x + spike, s.y);
+          } else {
+            ctx.moveTo(s.x, s.y - spike);
+            ctx.lineTo(s.x, s.y + spike);
+          }
+          ctx.stroke();
+        }
       }
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.beginPath();

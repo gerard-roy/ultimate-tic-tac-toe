@@ -123,6 +123,7 @@ function draw(e?: ChangeEvent): void {
   const coaching = coachLeft > 0 && game.vsComputer;
   status.textContent = title ? '' : statusText(game, coaching);
   undoBtn.disabled = !game.canUndo || s.result !== 'playing';
+  undoBtn.style.visibility = s.result === 'playing' ? '' : 'hidden';
   const side = s.result === 'playing' ? s.next : s.result === 'draw' ? 'none' : s.result;
   turnChip.dataset.side = side;
   turnChip.classList.toggle('breathing', game.thinking);
