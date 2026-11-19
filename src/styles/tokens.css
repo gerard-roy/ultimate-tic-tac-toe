@@ -1,0 +1,23 @@
+:root {
+  --nave: #12101b;
+  --stone: #231f33;
+  --stone-edge: #3b3552;
+  --lead: #08070c;
+  --lead-shine: #4a4560;
+  --limewash: #f1ece1;
+  --dust: #a79fb5;
+  --sun: #fff1c2;
+  --amber-lit: #ffb23e;
+  --amber-deep: #e0701a;
+  --amber-unlit: #7a4a1c;
+  --cobalt-lit: #4d8dff;
+  --cobalt-deep: #1f4fd1;
+  --cobalt-unlit: #24386e;
+  --clear-lit: #d9eadf;
+  --clear-unlit: #343b47;
+  --grisaille-lit: #8e8a99;
+  --grisaille-unlit: #45424f;
+
+  --face-title: 'Federo', Optima, Candara, serif;
+  --face-body: 'Alegreya Sans', 'Gill Sans', 'Trebuchet MS', sans-serif;
+}
