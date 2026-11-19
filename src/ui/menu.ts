@@ -37,7 +37,7 @@ export function buildMenu(opts: {
     slider('vol-effects', 'Effects', 'effects'),
     slider('vol-room', 'Room tone', 'room'),
     h('h3', { text: 'Motion and taps' }),
-    check('opt-motion', 'Reduce motion', 'Marks and light change without movement, and the scenery is calm.', s.reduceMotion ?? opts.systemReduce, (v) => {
+    check('opt-motion', 'Reduce motion', 'Marks and light change without movement, and the scenery is quieter.', s.reduceMotion ?? opts.systemReduce, (v) => {
       s.reduceMotion = v;
       opts.onChange(s);
     }),

@@ -25,7 +25,7 @@ export const state = (page: Page) => page.evaluate(() => window.__game.state()) 
 export const square = (page: Page, level: number, pane: number) => page.locator(`.pane[data-panel="${level}"][data-pane="${pane}"]`);
 
 export async function start(page: Page, opts: { mode: string; game?: 'cube' | 'classic'; query?: string }): Promise<void> {
-  await page.goto(`./?${opts.query ?? 'bg=stone&seed=11'}`);
+  await page.goto(`./?${opts.query ?? 'bg=none&seed=11'}`);
   await freshTitle(page);
   await page.locator(`#game-${opts.game ?? 'cube'}`).check({ force: true });
   await page.locator(`#mode-${opts.mode}`).check({ force: true });

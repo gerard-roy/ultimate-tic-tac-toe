@@ -5,15 +5,17 @@
 import { SpaceScene } from './space';
 import { OceanScene } from './ocean';
 
-export type BackgroundId = 'space-lively' | 'space-calm' | 'ocean-lively' | 'ocean-calm' | 'stone';
+export type BackgroundId = 'space' | 'ocean';
 
-export const BACKGROUNDS: { id: BackgroundId; name: string; line: string }[] = [
-  { id: 'space-lively', name: 'Space, lively', line: 'Drifting stars, shooting stars and stardust.' },
-  { id: 'space-calm', name: 'Space, calm', line: 'A still night sky.' },
-  { id: 'ocean-lively', name: 'Ocean, lively', line: 'A busy reef full of animals.' },
-  { id: 'ocean-calm', name: 'Ocean, calm', line: 'Quiet water and a few slow animals.' },
-  { id: 'stone', name: 'Stone room', line: 'No scenery, just the window.' },
+export const BACKGROUNDS: { id: BackgroundId; name: string }[] = [
+  { id: 'space', name: 'Space' },
+  { id: 'ocean', name: 'Ocean' },
 ];
+
+/** Reads a background name, accepting the names an earlier build saved. */
+export function toBackground(value: unknown): BackgroundId {
+  return typeof value === 'string' && value.startsWith('ocean') ? 'ocean' : 'space';
+}
 
 export interface Pointer {
   x: number;
@@ -59,7 +61,7 @@ export class Background {
   private ctx: CanvasRenderingContext2D | null;
   private cardEl: HTMLElement;
   private scene: Scene | null = null;
-  private id: BackgroundId = 'stone';
+  private id: BackgroundId | 'none' = 'none';
   private raf = 0;
   private last = 0;
   private w = 0;
@@ -119,25 +121,21 @@ export class Background {
     return this.scene?.figures?.() ?? [];
   }
 
-  get current(): BackgroundId {
+  get current(): BackgroundId | 'none' {
     return this.id;
   }
 
-  /** Reduced motion swaps a lively scene for its calm version. */
-  set(id: BackgroundId, reduce: boolean): void {
-    const effective: BackgroundId = reduce && id === 'space-lively' ? 'space-calm' : reduce && id === 'ocean-lively' ? 'ocean-calm' : id;
-    if (effective === this.id && reduce === this.reduce && (this.scene || effective === 'stone')) return;
-    this.id = effective;
+  /**
+   * Reduced motion draws the same scene with fewer things and less movement.
+   * 'none' leaves the page bare; only the tests ask for it.
+   */
+  set(id: BackgroundId | 'none', reduce: boolean): void {
+    if (id === this.id && reduce === this.reduce && (this.scene || id === 'none')) return;
+    this.id = id;
     this.reduce = reduce;
     this.hideCard();
-    document.documentElement.dataset.bg = effective.split('-')[0];
-    switch (effective) {
-      case 'space-lively': this.scene = new SpaceScene(true); break;
-      case 'space-calm': this.scene = new SpaceScene(false); break;
-      case 'ocean-lively': this.scene = new OceanScene(true); break;
-      case 'ocean-calm': this.scene = new OceanScene(false); break;
-      default: this.scene = null;
-    }
+    document.documentElement.dataset.bg = id;
+    this.scene = id === 'space' ? new SpaceScene(!reduce) : id === 'ocean' ? new OceanScene(!reduce) : null;
     this.canvas.hidden = !this.scene;
     this.resize();
     if (this.scene) this.play();

@@ -1,5 +1,5 @@
 import { readJson, writeJson, type Mode, type Variant } from './game';
-import type { BackgroundId } from './bg';
+import { toBackground, type BackgroundId } from './bg';
 
 export interface Settings {
   master: number;
@@ -25,7 +25,7 @@ export const DEFAULTS: Settings = {
   muted: false,
   reduceMotion: null,
   confirmTaps: false,
-  background: 'space-lively',
+  background: 'space',
   variant: 'cube',
   mode: 'glazier',
 };
@@ -33,6 +33,7 @@ export const DEFAULTS: Settings = {
 export function loadSettings(): Settings {
   const s = { ...DEFAULTS, ...(readJson<Partial<Settings>>(KEY) ?? {}) };
   if (s.variant !== 'classic') s.variant = 'cube';
+  s.background = toBackground(s.background);
   return s;
 }
 

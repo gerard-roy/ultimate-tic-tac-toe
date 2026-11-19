@@ -3,7 +3,7 @@
 Tic-tac-toe on three stacked 3 by 3 levels, drawn as a stained-glass window, with classic nine-square tic-tac-toe as a second game. A line of three wins: along a level, straight down through the levels, or slanting across them. Everything is drawn and synthesized in code: there are no image, video or audio files.
 
 - Play against three computer opponents (Apprentice, Glazier, Master) or with two players on one device.
-- Pick a background: Space or Ocean, each in a lively and a calm version, or the plain stone room. The scenery answers the pointer. Reach a star and its constellation draws itself. Rest on a star or an animal to read about it. It never affects the game.
+- Pick a background: Space or Ocean. The scenery answers the pointer. Reach a star and its constellation draws itself. Rest on a star or an animal to read about it. It never affects the game.
 - [docs/SPEC.md](docs/SPEC.md) is the original brief, written for an earlier game called Ninefold. Its game rules no longer apply; its look, sound and accessibility sections still do. What changed, and why, is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Run
@@ -15,7 +15,7 @@ npm ci
 npm run dev        # http://localhost:5173
 ```
 
-Useful query parameters: `?seed=7` makes the computer repeatable, `?bg=ocean-calm` picks a background for one visit (`space-lively`, `space-calm`, `ocean-lively`, `ocean-calm`, `stone`).
+Useful query parameters: `?seed=7` makes the computer repeatable, `?bg=ocean` or `?bg=space` picks a background for one visit, and `?bg=none` shows no scenery (the tests use it).
 
 ## Test
 

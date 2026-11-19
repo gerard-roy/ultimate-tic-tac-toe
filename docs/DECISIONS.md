@@ -82,3 +82,9 @@ Choices made where the spec was open, and places where a later request from the 
 55. The 3D window is narrower and taller than the Classic one: `min(46vh, 500px)` wide, or `min(92vw, 43vh)` on a phone.
 56. Arrow keys walk a grid three squares wide: the rows of the top level, then the middle, then the bottom.
 57. Wins, losses and draws are kept separately for 3D and Classic. Saved settings and games from the Ninefold build are not carried over.
+
+## Two backgrounds
+
+58. The owner cut the backgrounds to two, named "Space" and "Ocean", each using what was the lively version. The calm versions and the stone room are no longer choices, and the default is Space. Entries 1, 33 and 44 above are superseded where they mention them.
+59. With reduce motion on, Space and Ocean draw with fewer things and less movement. That is the old calm drawing, kept only for this setting.
+60. `?bg=none` shows no scenery. It is not offered on screen and exists for the tests.

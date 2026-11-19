@@ -11,7 +11,7 @@ async function open(page: import('@playwright/test').Page, bg: string) {
   await page.waitForFunction(() => window.__game.background.targets().length > 0);
 }
 
-for (const bg of ['space-lively', 'space-calm']) {
+for (const bg of ['space']) {
   test(`${bg}: resting on a star shows its name, brightness, size, colour and picture`, async ({ page }) => {
     const problems = watchConsole(page);
     await open(page, bg);
@@ -32,7 +32,7 @@ for (const bg of ['space-lively', 'space-calm']) {
   });
 }
 
-for (const bg of ['space-lively', 'space-calm']) {
+for (const bg of ['space']) {
   test(`${bg}: reaching a star draws its whole constellation`, async ({ page }) => {
     await open(page, bg);
     const figures = await page.evaluate(() => window.__game.background.figures());
@@ -50,7 +50,7 @@ for (const bg of ['space-lively', 'space-calm']) {
   });
 }
 
-for (const bg of ['ocean-lively', 'ocean-calm']) {
+for (const bg of ['ocean']) {
   test(`${bg}: animals answer the pointer and never touch the game`, async ({ page }) => {
     const problems = watchConsole(page);
     await open(page, bg);
@@ -66,10 +66,21 @@ for (const bg of ['ocean-lively', 'ocean-calm']) {
   });
 }
 
-test('the lively scenes hold more animals than the calm ones', async ({ page }) => {
-  await open(page, 'ocean-lively');
-  const lively = await page.evaluate(() => window.__game.background.targets().length);
-  await open(page, 'ocean-calm');
-  const calm = await page.evaluate(() => window.__game.background.targets().length);
-  expect(lively).toBeGreaterThan(calm * 2);
+test('the picker offers only Space and Ocean', async ({ page }) => {
+  await page.goto('./');
+  await freshTitle(page);
+  await expect(page.locator('#title-bg option')).toHaveText(['Space', 'Ocean']);
+  await page.locator('#title-bg').selectOption('ocean');
+  await expect(page.locator('html')).toHaveAttribute('data-bg', 'ocean');
+  await page.reload();
+  await expect(page.locator('#title-bg')).toHaveValue('ocean');
+});
+
+test('reduce motion draws a quieter ocean with fewer animals', async ({ page }) => {
+  await open(page, 'ocean');
+  const full = await page.evaluate(() => window.__game.background.targets().length);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, 'ocean');
+  const quiet = await page.evaluate(() => window.__game.background.targets().length);
+  expect(full).toBeGreaterThan(quiet * 2);
 });

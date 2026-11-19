@@ -1,7 +1,7 @@
 import './styles/tokens.css';
 import './styles/main.css';
 import { Sound } from './audio';
-import { Background } from './bg';
+import { Background, toBackground } from './bg';
 import { Game, type ChangeEvent } from './game';
 import { FloorLight, Motes } from './render/light';
 import { TIMING, reducedMotion, setReducedMotion, systemReducedMotion } from './render/motion';
@@ -74,7 +74,8 @@ function applySettings(): void {
   soundBtn.setAttribute('aria-label', settings.muted ? 'Sound is off. Turn sound on' : 'Sound is on. Turn sound off');
   soundBtn.setAttribute('aria-pressed', String(!settings.muted));
   const bgParam = params.get('bg');
-  background.set((bgParam as typeof settings.background | null) ?? settings.background, reduce);
+  // ?bg= picks the scenery for one visit; ?bg=none is for the tests.
+  background.set(bgParam === 'none' ? 'none' : bgParam ? toBackground(bgParam) : settings.background, reduce);
   if (view) view.confirmTaps = settings.confirmTaps;
   if (reduce || screen === 'title') motes.stop();
   else motes.start();

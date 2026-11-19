@@ -128,7 +128,7 @@ test('a square that is already taken is refused', async ({ page }) => {
 });
 
 test('a full game with the keyboard alone, with every move announced', async ({ page }) => {
-  await page.goto('./?bg=stone&seed=5');
+  await page.goto('./?bg=none&seed=5');
   await page.locator('#game-cube').check({ force: true });
   await page.locator('#mode-two').focus();
   await page.locator('#mode-two').check({ force: true });
